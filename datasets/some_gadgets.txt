@@ -1,0 +1,18 @@
+﻿4 CVE-2013-1706/Firefox_22.0b6_CVE_2013_1706_toolkit_components_maintenanceservice_workmonitor.cpp cppfunc 111
+WCHAR installDir[MAX_PATH + 1] = {L'\0'};
+if (!GetInstallationDir(argc, argv, installDir)) {
+GetInstallationDir(int argcTmp, LPWSTR *argvTmp, WCHAR aResultDir[MAX_PATH + 1])
+wcsncpy(aResultDir, argvTmp[2], MAX_PATH);
+WCHAR* backSlash = wcsrchr(aResultDir, L'\\');
+0
+---------------------------------
+5 CVE-2013-1732/Firefox_20.0.1_CVE_2013_1732_layout_generic_nsBlockFrame.cpp cfunc 196
+DumpStyleGeneaology(nsIFrame* aFrame, const char* gap)
+nsFrame::ListTag(stdout, aFrame);
+nsStyleContext* sc = aFrame->GetStyleContext();
+printf("%p ", sc);
+psc = sc->GetParent();
+sc = psc;
+printf("%p ", sc);
+0
+---------------------------------

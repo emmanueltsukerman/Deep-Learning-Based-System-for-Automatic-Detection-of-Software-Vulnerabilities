@@ -28,25 +28,10 @@ Parameters, as from the VulDeePecker paper:
     Epochs: 4
 """
 class BLSTM:
-    def __init__(self, data, name="", batch_size=64):
-        vectors = np.stack(data.iloc[:, 1].values)
-        labels = data.iloc[:, 0].values
-        positive_idxs = np.where(labels == 1)[0]
-        negative_idxs = np.where(labels == 0)[0]
-        undersampled_negative_idxs = np.random.choice(negative_idxs, len(positive_idxs), replace=False)
-        resampled_idxs = np.concatenate([positive_idxs, undersampled_negative_idxs])
-
-        X_train, X_test, y_train, y_test = train_test_split(vectors[resampled_idxs, ], labels[resampled_idxs],
-                                                            test_size=0.2, stratify=labels[resampled_idxs])
-        self.X_train = X_train
-        self.X_test = X_test
-        self.y_train = to_categorical(y_train)
-        self.y_test = to_categorical(y_test)
+    def __init__(self, name=""):
         self.name = name
-        self.batch_size = batch_size
-        self.class_weight = compute_class_weight(class_weight='balanced', classes=[0, 1], y=labels)
         model = Sequential()
-        model.add(Bidirectional(LSTM(300), input_shape=(vectors.shape[1], vectors.shape[2])))
+        model.add(Bidirectional(LSTM(300), input_shape=(50, 50)))
         model.add(Dense(300))
         model.add(LeakyReLU())
         model.add(Dropout(0.5))
@@ -62,21 +47,26 @@ class BLSTM:
     """
     Trains model based on training data
     """
-    def train(self):
-        self.model.fit(self.X_train, self.y_train, batch_size=self.batch_size, epochs=4, class_weight=self.class_weight)
+    def train(self, data, batch_size=64, epochs=4):
+        vectors = np.stack(data.iloc[:, 1].values)
+        labels = data.iloc[:, 0].values
+        positive_idxs = np.where(labels == 1)[0]
+        negative_idxs = np.where(labels == 0)[0]
+        undersampled_negative_idxs = np.random.choice(negative_idxs, len(positive_idxs), replace=False)
+        resampled_idxs = np.concatenate([positive_idxs, undersampled_negative_idxs])
+
+        X_train, X_test, y_train, y_test = train_test_split(vectors[resampled_idxs, ], labels[resampled_idxs],
+                                                            test_size=0.2, stratify=labels[resampled_idxs])
+        y_train = to_categorical(y_train)
+        y_test = to_categorical(y_test)
+        class_weight = compute_class_weight(class_weight='balanced', classes=[0, 1], y=labels)
+        self.model.fit(X_train, y_train, batch_size=batch_size, epochs=epochs, class_weight=class_weight)
         self.model.save_weights(self.name + "_model.h5")
-
-    """
-    Tests accuracy of model based on test data
-    Loads weights from file if no weights are attached to model object
-    """
-    def test(self):
-        self.model.load_weights(self.name + "_model.h5")
-        values = self.model.evaluate(self.X_test, self.y_test, batch_size=self.batch_size)
+        values = self.model.evaluate(X_test, y_test, batch_size=batch_size)
         print("Accuracy is...", values[1])
-        predictions = (self.model.predict(self.X_test, batch_size=self.batch_size)).round()
+        predictions = (self.model.predict(X_test, batch_size=batch_size)).round()
 
-        tn, fp, fn, tp = confusion_matrix(np.argmax(self.y_test, axis=1), np.argmax(predictions, axis=1)).ravel()
+        tn, fp, fn, tp = confusion_matrix(np.argmax(y_test, axis=1), np.argmax(predictions, axis=1)).ravel()
         print('False positive rate is...', fp / (fp + tn))
         print('False negative rate is...', fn / (fn + tp))
         recall = tp / (tp + fn)
@@ -84,3 +74,17 @@ class BLSTM:
         precision = tp / (tp + fp)
         print('Precision is...', precision)
         print('F1 score is...', (2 * precision * recall) / (precision + recall))
+		
+    """
+    Tests accuracy of model based on test data
+    Loads weights from file if no weights are attached to model object
+    """
+    def load(self, model_path):
+        self.model.load_weights(model_path)
+
+    def predict(self, data, batch_size=64):
+        vectors = np.stack(data.iloc[:, 1].values)
+        X = vectors
+        predictions = (self.model.predict(X, batch_size=batch_size)).round()
+        print(predictions)
+        
